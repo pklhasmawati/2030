@@ -91,6 +91,17 @@ onAuthStateChanged(auth, async (user) => {
         }
     } else {
         currentUser = null;
+        appState = {
+            currentTab: 'rumah_tangga',
+            tabs: { rumah_tangga: [], usaha_micro: [], verifikasi: [], opsi_lain: [], verif: [] },
+            original: { rumah_tangga: [], usaha_micro: [], verifikasi: [], opsi_lain: [], verif: [] },
+            notes: ""
+        };
+        notesInput.value = "";
+        dataListContainer.innerHTML = `<div class="p-8 text-center text-sm text-slate-400 italic">Sesi keluar. Silakan login terlebih dahulu untuk melihat data.</div>`;
+        saveIndicator.textContent = "SILAKAN LOGIN TERLEBIH DAHULU";
+        document.getElementById('inputSection').classList.add('hidden');
+        document.getElementById('mainDashboard').classList.add('hidden');
     }
 });
 
