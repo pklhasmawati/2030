@@ -1,4 +1,4 @@
-// --- FIREBASE DATABASE INTEGRATION ---
+// --- FIREBASE DATABASE INTEGRATION (MULTI-USER VERSION) ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -18,7 +18,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Object State Utama Aplikasi
+// Object State Utama Aplikasi (Akan direset setiap ganti akun)
 let appState = {
     currentTab: 'rumah_tangga',
     tabs: { rumah_tangga: [], usaha_micro: [], verifikasi: [], opsi_lain: [], verif: [] },
@@ -35,7 +35,7 @@ const categories = {
 };
 
 let searchQuery = '';
-let currentUser = null; // Menyimpan info user yang sedang login
+let currentUser = null; 
 
 // Menghubungkan Elemen DOM
 const saveIndicator = document.getElementById('saveIndicator');
@@ -49,59 +49,67 @@ const toast = document.getElementById('toast');
 const htmlEl = document.documentElement;
 const notesInput = document.getElementById('notesInput');
 
-// --- SYNC ENGINE (FIREBASE CLOUD) ---
+// --- SYNC ENGINE (FIREBASE CLOUD - DYNAMIC PER USER) ---
 
-// Memantau status login. Jika sukses login, langsung ambil data dari Cloud Firebase
+// Memantau status login. Jika sukses login, ambil data BERDASARKAN USER UID
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         currentUser = user;
-        saveIndicator.textContent = "MENGHUBUNGKAN KE CLOUD...";
+        saveIndicator.textContent = "MENGHUBUNGKAN KE RUANG DATA ANDA...";
         
         try {
-            // Mengambil dokumen data utama dari Cloud Firestore
-            const docRef = doc(db, "data_pro_manager", "main_dashboard");
+            // PERUBAHAN DI SINI: Dokumen disimpan berdasarkan UID unik masing-masing akun
+            const docRef = doc(db, "data_pro_manager", user.uid);
             const docSnap = await getDoc(docRef);
 
             if (docSnap.exists()) {
                 const parsed = docSnap.data();
                 if (parsed.tabs) {
-                    // Validasi struktur jika ada tab baru
                     if (!parsed.tabs.verif) parsed.tabs.verif = [];
                     if (!parsed.original.verif) parsed.original.verif = [];
                     if (parsed.notes === undefined) parsed.notes = "";
                     appState = parsed;
                 }
+            } else {
+                // Jika akun baru dan belum punya data sama sekali, buat data kosong awal
+                appState = {
+                    currentTab: 'rumah_tangga',
+                    tabs: { rumah_tangga: [], usaha_micro: [], verifikasi: [], opsi_lain: [], verif: [] },
+                    original: { rumah_tangga: [], usaha_micro: [], verifikasi: [], opsi_lain: [], verif: [] },
+                    notes: ""
+                };
             }
             
-            // Terapkan data ke UI
+            // Terapkan data milik akun aktif ke UI
             notesInput.value = appState.notes || ""; 
             updateTabUI();
             checkDisplayMode();
             updateTimestamp();
         } catch (error) {
             console.error("Gagal memuat data cloud:", error);
-            saveIndicator.textContent = "GAGAL MEMUAT DATA CLOUD!";
+            saveIndicator.textContent = "GAGAL MEMUAT DATA AKUN!";
         }
     } else {
         currentUser = null;
     }
 });
 
-// Fungsi Simpan Otomatis ke Cloud Firebase
+// Fungsi Simpan Otomatis ke Cloud Firebase (Spesifik per User ID)
 async function saveState() {
-    if (!currentUser) return; // Jangan simpan jika belum login
+    if (!currentUser) return; 
     
     saveIndicator.textContent = "MENYIMPAN KE CLOUD...";
     try {
-        const docRef = doc(db, "data_pro_manager", "main_dashboard");
-        await setDoc(docRef, appState); // Lempar data ke server cloud google
+        // PERUBAHAN DI SINI: Menyimpan data ke kamar dokumen milik sendiri (currentUser.uid)
+        const docRef = doc(db, "data_pro_manager", currentUser.uid);
+        await setDoc(docRef, appState); 
         
         const now = new Date();
         const time = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        saveIndicator.textContent = `TERSIMPAN DI CLOUD (${getTodayString()} ${time})`;
+        saveIndicator.textContent = `DATA ANDA TERSIMPAN (${getTodayString()} ${time})`;
     } catch (error) {
         console.error("Gagal menyimpan ke cloud:", error);
-        saveIndicator.textContent = "KONEKSI CLOUD GAGAL!";
+        saveIndicator.textContent = "KONEKSI KELUARGA DATA GAGAL!";
     }
 }
 
@@ -309,7 +317,7 @@ document.getElementById('btnToggleNotes').onclick = () => {
 
 notesInput.oninput = (e) => {
     appState.notes = e.target.value;
-    saveState(); // Otomatis melempar isi catatan baru ke cloud Firebase
+    saveState(); 
 };
 
 // --- LOGIKA TOGGLE INPUT PENCARIAN ---
@@ -384,7 +392,7 @@ document.getElementById('fileImport').onchange = (e) => {
                 
                 appState = parsedData;
                 notesInput.value = appState.notes; 
-                await saveState(); // Paksa lempar data impor ke Firebase database
+                await saveState(); 
                 closeAndClearSearch();
                 checkDisplayMode();
                 alert('BERHASIL! Seluruh data cadangan disinkronkan ke Cloud Firebase.');
