@@ -69,6 +69,9 @@ onAuthStateChanged(auth, async (user) => {
                     if (!parsed.original.verif) parsed.original.verif = [];
                     if (parsed.notes === undefined) parsed.notes = "";
                     appState = parsed;
+					
+					const localTab = localStorage.getItem('activeTab');
+					if (localTab) appState.currentTab = localTab;
                 }
             } else {
                 // Jika akun baru dan belum punya data sama sekali, buat data kosong awal
@@ -133,16 +136,16 @@ function getTodayString() {
 }
 
 function updateTimestamp() {
-    saveIndicator.textContent = `TERHUBUNG DENGAN CLOUD CLOUD FIRESTORE`;
+    saveIndicator.textContent = `TERHUBUNG DENGAN DATABASE`;
 }
 
 // --- NAVIGATION BAR ---
 window.switchTab = function(tabKey) {
     appState.currentTab = tabKey;
+	localStorage.setItem('activeTab', tabKey);
     closeAndClearSearch();
     updateTabUI();
     checkDisplayMode();
-    saveState();
 }
 
 function updateTabUI() {
