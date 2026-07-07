@@ -1,4 +1,24 @@
-// --- DATA STRUCTURE MANAGEMENT V4.5 ---
+// --- FIREBASE DATABASE INTEGRATION ---
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// Konfigurasi Firebase Anda yang tersimpan permanen
+const firebaseConfig = {
+    apiKey: "AIzaSyDu9mi0SySgJgyEueuD6WEhpc0nOyLYic4",
+    authDomain: "pkl-hasmawati.firebaseapp.com",
+    projectId: "pkl-hasmawati",
+    storageBucket: "pkl-hasmawati.firebasestorage.app",
+    messagingSenderId: "92948220017",
+    appId: "1:92948220017:web:51c7f4d8638caaf86fb3d0"
+};
+
+// Inisialisasi
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// Object State Utama Aplikasi
 let appState = {
     currentTab: 'rumah_tangga',
     tabs: { rumah_tangga: [], usaha_micro: [], verifikasi: [], opsi_lain: [], verif: [] },
@@ -15,7 +35,9 @@ const categories = {
 };
 
 let searchQuery = '';
+let currentUser = null; // Menyimpan info user yang sedang login
 
+// Menghubungkan Elemen DOM
 const saveIndicator = document.getElementById('saveIndicator');
 const inputCategoryName = document.getElementById('inputCategoryName');
 const dataListContainer = document.getElementById('dataListContainer');
@@ -27,27 +49,60 @@ const toast = document.getElementById('toast');
 const htmlEl = document.documentElement;
 const notesInput = document.getElementById('notesInput');
 
-// --- ENGINE LOGIC ---
-function initApp() {
-    const saved = localStorage.getItem('app_state_stable_v4');
-    if (saved) { 
-        const parsed = JSON.parse(saved);
-        if (parsed.tabs) {
-            if (!parsed.tabs.verif) parsed.tabs.verif = [];
-            if (!parsed.original.verif) parsed.original.verif = [];
-            if (parsed.notes === undefined) parsed.notes = "";
-            appState = parsed;
-        }
-    }
-    initTheme();
-    updateTabUI();
-    checkDisplayMode();
-    notesInput.value = appState.notes || ""; 
-}
+// --- SYNC ENGINE (FIREBASE CLOUD) ---
 
-function saveState() {
-    localStorage.setItem('app_state_stable_v4', JSON.stringify(appState));
-    updateTimestamp();
+// Memantau status login. Jika sukses login, langsung ambil data dari Cloud Firebase
+onAuthStateChanged(auth, async (user) => {
+    if (user) {
+        currentUser = user;
+        saveIndicator.textContent = "MENGHUBUNGKAN KE CLOUD...";
+        
+        try {
+            // Mengambil dokumen data utama dari Cloud Firestore
+            const docRef = doc(db, "data_pro_manager", "main_dashboard");
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                const parsed = docSnap.data();
+                if (parsed.tabs) {
+                    // Validasi struktur jika ada tab baru
+                    if (!parsed.tabs.verif) parsed.tabs.verif = [];
+                    if (!parsed.original.verif) parsed.original.verif = [];
+                    if (parsed.notes === undefined) parsed.notes = "";
+                    appState = parsed;
+                }
+            }
+            
+            // Terapkan data ke UI
+            notesInput.value = appState.notes || ""; 
+            updateTabUI();
+            checkDisplayMode();
+            updateTimestamp();
+        } catch (error) {
+            console.error("Gagal memuat data cloud:", error);
+            saveIndicator.textContent = "GAGAL MEMUAT DATA CLOUD!";
+        }
+    } else {
+        currentUser = null;
+    }
+});
+
+// Fungsi Simpan Otomatis ke Cloud Firebase
+async function saveState() {
+    if (!currentUser) return; // Jangan simpan jika belum login
+    
+    saveIndicator.textContent = "MENYIMPAN KE CLOUD...";
+    try {
+        const docRef = doc(db, "data_pro_manager", "main_dashboard");
+        await setDoc(docRef, appState); // Lempar data ke server cloud google
+        
+        const now = new Date();
+        const time = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        saveIndicator.textContent = `TERSIMPAN DI CLOUD (${getTodayString()} ${time})`;
+    } catch (error) {
+        console.error("Gagal menyimpan ke cloud:", error);
+        saveIndicator.textContent = "KONEKSI CLOUD GAGAL!";
+    }
 }
 
 function getTodayString() {
@@ -59,9 +114,7 @@ function getTodayString() {
 }
 
 function updateTimestamp() {
-    const now = new Date();
-    const time = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    saveIndicator.textContent = `Penyimpanan Otomatis Aktif (${getTodayString()} ${time})`;
+    saveIndicator.textContent = `TERHUBUNG DENGAN CLOUD CLOUD FIRESTORE`;
 }
 
 // --- NAVIGATION BAR ---
@@ -256,7 +309,7 @@ document.getElementById('btnToggleNotes').onclick = () => {
 
 notesInput.oninput = (e) => {
     appState.notes = e.target.value;
-    saveState(); 
+    saveState(); // Otomatis melempar isi catatan baru ke cloud Firebase
 };
 
 // --- LOGIKA TOGGLE INPUT PENCARIAN ---
@@ -297,16 +350,12 @@ function closeAndClearSearch() {
 
 // --- ARCHIVE ENGINE ---
 document.getElementById('btnExport').onclick = () => {
-    const dataStr = localStorage.getItem('app_state_stable_v4');
-    if (!dataStr) {
-        alert('Gagal mengekspor: Tidak ada data aktif di dalam sistem.');
-        return;
-    }
+    const dataStr = JSON.stringify(appState);
     const blob = new Blob([dataStr], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = `DATAPRO_BACKUP_${getTodayString()}.json`;
+    anchor.download = `DATAPRO_CLOUD_BACKUP_${getTodayString()}.json`;
     document.body.appendChild(anchor);
     anchor.click();
     document.body.removeChild(anchor);
@@ -321,24 +370,24 @@ document.getElementById('fileImport').onchange = (e) => {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
         try {
             const parsedData = JSON.parse(event.target.result);
             if (!parsedData.tabs || !parsedData.currentTab) {
                 alert('Gagal memulihkan: Format dokumen cadangan salah/rusak.');
                 return;
             }
-            if (confirm('Sistem mendeteksi file cadangan yang utuh. Lanjutkan sinkronisasi ulang data?')) {
+            if (confirm('Sistem mendeteksi file cadangan. Sinkronisasikan langsung ke Cloud Firebase?')) {
                 if (!parsedData.tabs.verif) parsedData.tabs.verif = [];
                 if (!parsedData.original.verif) parsedData.original.verif = [];
                 if (parsedData.notes === undefined) parsedData.notes = "";
                 
                 appState = parsedData;
                 notesInput.value = appState.notes; 
-                saveState();
+                await saveState(); // Paksa lempar data impor ke Firebase database
                 closeAndClearSearch();
                 checkDisplayMode();
-                alert('SELAMAT! Pemulihan sistem berhasil disinkronkan secara total beserta catatan Anda.');
+                alert('BERHASIL! Seluruh data cadangan disinkronkan ke Cloud Firebase.');
             }
         } catch (err) {
             alert('Error: Dokumen tersebut bukan arsip cadangan resmi.');
@@ -405,4 +454,4 @@ document.getElementById('themeToggle').onclick = () => {
     updateThemeIcon();
 };
 
-document.addEventListener('DOMContentLoaded', initApp);
+initTheme();
