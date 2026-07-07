@@ -1,0 +1,25 @@
+/* Custom Styles for Data Pro */
+body { 
+    transition: background-color 0.2s, color 0.2s; 
+}
+.marked-item { 
+    opacity: 0.4; 
+    background-color: rgba(244, 63, 94, 0.08) !important; 
+}
+.marked-text { 
+    text-decoration: line-through; 
+    color: #f43f5e !important; 
+}
+.copied-today-item { 
+    background-color: rgba(16, 185, 129, 0.04); 
+}
+::-webkit-scrollbar { 
+    width: 8px; 
+}
+::-webkit-scrollbar-track { 
+    background: transparent; 
+}
+::-webkit-scrollbar-thumb { 
+    background: #475569; 
+    border-radius: 10px; 
+}
