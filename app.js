@@ -574,4 +574,63 @@ document.getElementById('btnAddEditData').onclick = () => {
     }, 1500);
 };
 
+// --- COMPACT MODE (SEMBUNYIKAN TOMBOL KONTROL UNTUK MOBILE) ---
+const btnToggleUI = document.getElementById('btnToggleUI');
+
+// Daftar ID tombol-tombol yang ingin disembunyikan saat mode compact aktif
+const controlButtons = [
+    'btnShuffle', 
+    'btnReset', 
+    'btnToggleNotes', 
+    'btnToggleSearch', 
+    'btnExport', 
+    'btnImport', 
+    'btnEditData', 
+    'btnClear'
+];
+
+function initCompactMode() {
+    // Cek memori browser, apakah sebelumnya diset true (disembunyikan)
+    const isCompact = localStorage.getItem('compactMode') === 'true';
+    applyCompactMode(isCompact);
+}
+
+function applyCompactMode(isCompact) {
+    controlButtons.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            if (isCompact) {
+                el.classList.add('hidden');
+            } else {
+                el.classList.remove('hidden');
+            }
+        }
+    });
+    
+    // Ubah ikon mata
+    if (btnToggleUI) {
+        if (isCompact) {
+            btnToggleUI.innerHTML = '<i class="fa-solid fa-eye-slash text-sm"></i>';
+            btnToggleUI.classList.add('text-indigo-600', 'dark:text-indigo-400', 'bg-indigo-50', 'dark:bg-indigo-900/30');
+            btnToggleUI.classList.remove('text-slate-500', 'bg-slate-100', 'dark:bg-slate-800');
+        } else {
+            btnToggleUI.innerHTML = '<i class="fa-solid fa-eye text-sm"></i>';
+            btnToggleUI.classList.remove('text-indigo-600', 'dark:text-indigo-400', 'bg-indigo-50', 'dark:bg-indigo-900/30');
+            btnToggleUI.classList.add('text-slate-500', 'bg-slate-100', 'dark:bg-slate-800');
+        }
+    }
+}
+
+if (btnToggleUI) {
+    btnToggleUI.onclick = () => {
+        const currentlyCompact = localStorage.getItem('compactMode') === 'true';
+        const newMode = !currentlyCompact; // Balikkan statusnya
+        
+        localStorage.setItem('compactMode', newMode); // Simpan ke memori HP/Tablet
+        applyCompactMode(newMode); // Terapkan perubahan visualnya
+    };
+}
+
+initCompactMode();
+
 initTheme();
