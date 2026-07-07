@@ -476,4 +476,102 @@ document.getElementById('themeToggle').onclick = () => {
     updateThemeIcon();
 };
 
+// --- MODE EDIT DATA (TIDAK MENGUBAH URUTAN ANTRIAN) ---
+const editModal = document.getElementById('editModal');
+const newEditInput = document.getElementById('newEditInput');
+const editDataList = document.getElementById('editDataList');
+
+// Buka Modal
+document.getElementById('btnEditData').onclick = () => {
+    renderEditList();
+    editModal.classList.remove('hidden');
+    editModal.classList.add('flex'); // Pakai flex agar letaknya di tengah
+};
+
+// Tutup Modal
+document.getElementById('btnCloseModal').onclick = () => {
+    editModal.classList.add('hidden');
+    editModal.classList.remove('flex');
+    newEditInput.value = '';
+};
+
+// Merender daftar data yang bisa dihapus secara spesifik
+function renderEditList() {
+    const list = appState.tabs[appState.currentTab] || [];
+    if (list.length === 0) {
+        editDataList.innerHTML = `<div class="p-6 text-center text-sm text-slate-400 italic">Antrean data kosong.</div>`;
+        return;
+    }
+
+    editDataList.innerHTML = list.map((item, idx) => `
+        <div class="flex justify-between items-center p-3 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 transition">
+            <div class="flex items-center gap-3 overflow-hidden">
+                <span class="text-[10px] font-mono text-slate-400 w-4">${idx + 1}</span>
+                <div class="font-mono text-sm truncate ${item.marked ? 'text-rose-500 line-through opacity-60' : 'text-slate-700 dark:text-slate-200'}">
+                    ${item.val}
+                </div>
+            </div>
+            <button onclick="deleteSingleData(${idx})" class="w-8 h-8 flex flex-shrink-0 items-center justify-center rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white dark:bg-rose-900/30 dark:hover:bg-rose-500 transition cursor-pointer" title="Hapus Permanen Baris Ini">
+                <i class="fa-solid fa-trash-can text-xs"></i>
+            </button>
+        </div>
+    `).join('');
+}
+
+// Menghapus 1 baris tanpa merusak urutan
+window.deleteSingleData = function(idx) {
+    if (confirm('Yakin ingin menghapus baris ini secara permanen dari database?')) {
+        const list = appState.tabs[appState.currentTab];
+        list.splice(idx, 1);
+        
+        // Perbarui referensi original agar saat klik 'Reset', data ini tidak kembali muncul
+        appState.original[appState.currentTab] = JSON.parse(JSON.stringify(list));
+        
+        saveState(); // Sinkron ke Firebase
+        renderList(); // Refresh layar utama
+        renderEditList(); // Refresh layar modal
+    }
+};
+
+// Menambah data ke antrean paling akhir (sebelum tanda X)
+document.getElementById('btnAddEditData').onclick = () => {
+    const text = newEditInput.value.trim();
+    if (!text) return;
+
+    const lines = text.split('\n')
+                    .map(l => l.trim())
+                    .filter(l => l.length > 0)
+                    .map(val => ({ val, marked: false, highlighted: false, lastCopied: "" }));
+
+    const list = appState.tabs[appState.currentTab];
+    
+    // Cari index baris pertama yang memiliki tanda X
+    const firstXIdx = list.findIndex(i => i.marked);
+    
+    if (firstXIdx === -1) {
+        // Jika tidak ada data bertanda X sama sekali, push ke paling bawah
+        list.push(...lines);
+    } else {
+        // Jika ada, sisipkan tepat DI ATAS baris bertanda X pertama
+        list.splice(firstXIdx, 0, ...lines);
+    }
+
+    // Perbarui ke daftar original
+    appState.original[appState.currentTab] = JSON.parse(JSON.stringify(list));
+    
+    newEditInput.value = '';
+    saveState(); // Lempar ke Firebase
+    renderList(); // Refresh dashboard utama
+    renderEditList(); // Refresh Modal
+
+    // Notifikasi ringan
+    const toast = document.getElementById('toast');
+    toast.textContent = `+${lines.length} DATA DITAMBAHKAN!`;
+    toast.classList.remove('opacity-0');
+    setTimeout(() => {
+        toast.classList.add('opacity-0');
+        setTimeout(() => toast.textContent = "TELAH DISALIN!", 300); // Kembalikan teks asli toast
+    }, 1500);
+};
+
 initTheme();
