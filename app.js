@@ -57,8 +57,15 @@ onAuthStateChanged(auth, async (user) => {
         currentUser = user;
         saveIndicator.textContent = "MENGHUBUNGKAN KE RUANG DATA ANDA...";
         
+		if (user.email) {
+            const emailName = user.email.split('@')[0];
+            const userNameDisplay = document.getElementById('userNameDisplay');
+            if (userNameDisplay) {
+                userNameDisplay.textContent = emailName;
+            }
+        }
+		
         try {
-            // PERUBAHAN DI SINI: Dokumen disimpan berdasarkan UID unik masing-masing akun
             const docRef = doc(db, "data_pro_manager", user.uid);
             const docSnap = await getDoc(docRef);
 
@@ -74,7 +81,6 @@ onAuthStateChanged(auth, async (user) => {
 					if (localTab) appState.currentTab = localTab;
                 }
             } else {
-                // Jika akun baru dan belum punya data sama sekali, buat data kosong awal
                 appState = {
                     currentTab: 'rumah_tangga',
                     tabs: { rumah_tangga: [], usaha_micro: [], verifikasi: [], opsi_lain: [], verif: [] },
@@ -83,7 +89,6 @@ onAuthStateChanged(auth, async (user) => {
                 };
             }
             
-            // Terapkan data milik akun aktif ke UI
             notesInput.value = appState.notes || ""; 
             updateTabUI();
             checkDisplayMode();
@@ -101,6 +106,12 @@ onAuthStateChanged(auth, async (user) => {
             notes: ""
         };
         notesInput.value = "";
+
+        const userNameDisplay = document.getElementById('userNameDisplay');
+        if (userNameDisplay) {
+            userNameDisplay.textContent = "USER";
+        }
+		
         dataListContainer.innerHTML = `<div class="p-8 text-center text-sm text-slate-400 italic">Sesi keluar. Silakan login terlebih dahulu untuk melihat data.</div>`;
         saveIndicator.textContent = "SILAKAN LOGIN TERLEBIH DAHULU";
         document.getElementById('inputSection').classList.add('hidden');

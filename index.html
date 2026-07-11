@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Data Manager Pro</title>
+    <title>Data Manager Pro v2.5</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -60,7 +60,11 @@
 				</p>
 			</div>
 			
-			<div class="flex gap-2">
+			<div class="flex items-center gap-2">
+				<div id="userInfoBadge" class="hidden md:flex items-center px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 shadow-sm border border-slate-200 dark:border-slate-700 text-xs font-bold">
+					<i class="fa-solid fa-user-astronaut mr-2 text-indigo-500"></i>
+					<span id="userNameDisplay" class="uppercase truncate max-w-[100px]">USER</span>
+				</div>
 				<button id="btnLogout" class="px-4 py-2 rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400 shadow-sm border border-rose-200 dark:border-rose-800 hover:scale-105 transition cursor-pointer font-bold text-xs flex items-center gap-2">
 					<i class="fa-solid fa-power-off"></i> <span class="hidden sm:inline">LOGOUT</span>
 				</button>
